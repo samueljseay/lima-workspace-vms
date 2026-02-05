@@ -1,0 +1,109 @@
+# Lima VM template for Claude Code sandboxes
+# Optimized for Apple Silicon with good defaults
+
+# Use Ubuntu 24.04 for broad compatibility
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+
+# Resource allocation - adjust as needed
+cpus: 4
+memory: "8GiB"
+disk: "50GiB"
+
+# Mount the codebase ({{CODE_PATH}} is replaced at runtime)
+mounts:
+  - location: "{{CODE_PATH}}"
+    mountPoint: "/workspace"
+    writable: true
+    # Use virtiofs for better performance on macOS
+    9p:
+      securityModel: mapped-xattr
+      cache: mmap
+
+# SSH configuration
+ssh:
+  localPort: 0  # Auto-assign port
+  loadDotSSHPubKeys: true
+
+# Provision the VM with essentials
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      # Update and install essentials
+      apt-get update
+      apt-get install -y \
+        build-essential \
+        git \
+        curl \
+        wget \
+        jq \
+        unzip \
+        ripgrep \
+        fd-find \
+        htop \
+        vim \
+        tmux
+
+      # Install PHP and common extensions
+      apt-get install -y \
+        php \
+        php-cli \
+        php-curl \
+        php-mbstring \
+        php-xml \
+        php-zip \
+        php-mysql \
+        composer
+
+      # Clean up
+      apt-get clean
+      rm -rf /var/lib/apt/lists/*
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      # Setup bash profile for workspace
+      cat >> ~/.bashrc << 'EOF'
+
+# Claude Sandbox environment
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+# Nice prompt showing we're in a sandbox
+PS1='\[\033[0;35m\][sandbox]\[\033[0m\] \[\033[0;34m\]\w\[\033[0m\] \$ '
+
+# Aliases
+alias ll='ls -la'
+alias claude='claude --dangerously-skip-permissions'
+EOF
+
+# Enable containerd for running containers inside the VM if needed
+containerd:
+  system: false
+  user: false
+
+# Rosetta for x86 emulation on Apple Silicon (if needed)
+rosetta:
+  enabled: true
+  binfmt: true
+
+# Network configuration
+networks:
+  - vzNAT: true
+
+# Message shown on start
+message: |
+  Claude Sandbox ready!
+
+  Your codebase is mounted at /workspace
+  Run 'claude' to start Claude Code in YOLO mode
+
+  Tip: Use 'tmux' for persistent sessions
