@@ -37,7 +37,7 @@ sandbox run "npm test" ~/Code/myproject
 sandbox ~/Code/myproject --name foo
 sandbox run claude ~/Code/myproject --name foo
 
-# Lean VM (no Docker/Chromium, 50GB disk)
+# Lean VM (no Docker/Chromium, 30GB disk)
 sandbox ~/Code/myproject --lean
 
 # Specify Claude model (default: opus)
@@ -60,11 +60,11 @@ sandbox rm myproject      # Delete
 - PHP + Composer
 - Git, ripgrep, fd, tmux, vim
 - Your codebase mounted at `/workspace`
-- 100GB disk
+- 50GB disk
 
 **Lean mode (`--lean`):**
 - Same base packages, but no Docker or Chromium
-- 50GB disk
+- 30GB disk
 - Faster to create, smaller footprint
 
 ## Authentication & Settings

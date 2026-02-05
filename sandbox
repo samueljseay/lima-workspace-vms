@@ -35,11 +35,11 @@ Usage:
 Options:
     --name, -n <name>                      Custom sandbox name
     --model, -m <model>                    Claude model (default: opus)
-    --lean                                 Minimal VM without Docker/Chromium (50GB disk)
+    --lean                                 Minimal VM without Docker/Chromium (30GB disk)
 
 Examples:
-    sandbox ~/Code/myproject              # Full VM: Docker, Chromium, 100GB
-    sandbox ~/Code/myproject --lean       # Lean VM: no Docker/Chromium, 50GB
+    sandbox ~/Code/myproject              # Full VM: Docker, Chromium, 50GB
+    sandbox ~/Code/myproject --lean       # Lean VM: no Docker/Chromium, 30GB
     sandbox ~/Code/myproject --model sonnet
     sandbox myproject                     # Attach to existing "myproject" sandbox
     sandbox myproject run claude          # Run claude in existing sandbox
@@ -49,7 +49,7 @@ Examples:
     sandbox rm myproject
 
 The VM comes with Claude Code pre-installed. Your codebase is mounted at /workspace.
-Full mode includes Docker, Chromium (for dev-browser), and 100GB disk.
+Full mode includes Docker, Chromium (for dev-browser), and 50GB disk.
 EOF
 }
 
@@ -156,8 +156,8 @@ create_sandbox() {
 
     # Configure VM based on lean mode
     if [[ "$lean" == "true" ]]; then
-        # Lean mode: 50GB disk, remove Docker and Chromium
-        sed -i.bak "s|{{DISK_SIZE}}|50GiB|g" "$tmp_config"
+        # Lean mode: 30GB disk, remove Docker and Chromium
+        sed -i.bak "s|{{DISK_SIZE}}|30GiB|g" "$tmp_config"
         sed -i.bak "s|{{EXTRAS_MESSAGE}}||g" "$tmp_config"
         # Remove Docker provisioning section
         sed -i.bak '/#{{DOCKER_START}}/,/#{{DOCKER_END}}/d' "$tmp_config"
@@ -165,8 +165,8 @@ create_sandbox() {
         sed -i.bak '/#{{CHROMIUM_START}}/,/#{{CHROMIUM_END}}/d' "$tmp_config"
         sed -i.bak '/#{{CHROMIUM_ENV_START}}/,/#{{CHROMIUM_ENV_END}}/d' "$tmp_config"
     else
-        # Full mode: 100GB disk, keep everything
-        sed -i.bak "s|{{DISK_SIZE}}|100GiB|g" "$tmp_config"
+        # Full mode: 50GB disk, keep everything
+        sed -i.bak "s|{{DISK_SIZE}}|50GiB|g" "$tmp_config"
         sed -i.bak "s|{{EXTRAS_MESSAGE}}|Docker and Chromium (dev-browser) are available|g" "$tmp_config"
         # Remove the marker comments but keep the content
         sed -i.bak 's|#{{DOCKER_START}}||g' "$tmp_config"
