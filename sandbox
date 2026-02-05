@@ -164,10 +164,12 @@ attach_sandbox() {
             $cmd
         " 2> >(grep -v "^bash: line 1: cd:" >&2)
     else
-        # Interactive shell (login shell to source profile)
+        # Interactive shell
         log_info "Entering sandbox '$name' (/workspace)"
         echo ""
-        limactl shell "$vm_name" -- bash -lc "cd /workspace 2>/dev/null && exec bash -l" 2> >(grep -v "^bash: line 1: cd:" >&2)
+        exec 3>&2 2> >(grep -v "^bash: line 1: cd:" >&3)
+        limactl shell --workdir /workspace "$vm_name"
+        exec 2>&3 3>&-
     fi
 }
 
