@@ -37,9 +37,11 @@ sandbox run "npm test" ~/Code/myproject
 sandbox ~/Code/myproject --name foo
 sandbox run claude ~/Code/myproject --name foo
 
+# Lean VM (no Docker/Chromium, 50GB disk)
+sandbox ~/Code/myproject --lean
+
 # Specify Claude model (default: opus)
 sandbox ~/Code/myproject --model sonnet
-sandbox run claude ~/Code/myproject --model haiku
 
 # Management
 sandbox list              # List all sandboxes
@@ -49,16 +51,21 @@ sandbox rm myproject      # Delete
 
 ## What's Included
 
-Each sandbox VM comes with:
-
+**Full mode (default):**
 - Ubuntu 24.04
 - Claude Code (native installer, YOLO mode by default)
 - Docker + Docker Compose (for wp-env, etc.)
+- Chromium (for dev-browser skill)
 - Node.js (via nvm)
 - PHP + Composer
 - Git, ripgrep, fd, tmux, vim
 - Your codebase mounted at `/workspace`
-- 100GB disk (50GB with `--no-docker`)
+- 100GB disk
+
+**Lean mode (`--lean`):**
+- Same base packages, but no Docker or Chromium
+- 50GB disk
+- Faster to create, smaller footprint
 
 ## Authentication & Settings
 

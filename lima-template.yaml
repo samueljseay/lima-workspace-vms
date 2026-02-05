@@ -60,13 +60,22 @@ provision:
         php-xml \
         php-zip \
         php-mysql \
-        composer \
-        chromium-browser \
-        chromium-chromedriver
+        composer
       apt-get clean
       rm -rf /var/lib/apt/lists/*
 
-  #{{DOCKER_PROVISION_START}}
+  #{{CHROMIUM_START}}
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      apt-get update
+      apt-get install -y chromium-browser chromium-chromedriver
+      apt-get clean
+      rm -rf /var/lib/apt/lists/*
+  #{{CHROMIUM_END}}
+
+  #{{DOCKER_START}}
   - mode: system
     script: |
       #!/bin/bash
@@ -90,7 +99,7 @@ provision:
       fi
       curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${ARCH}" -o ~/.docker/cli-plugins/docker-compose
       chmod +x ~/.docker/cli-plugins/docker-compose
-  #{{DOCKER_PROVISION_END}}
+  #{{DOCKER_END}}
 
   - mode: user
     script: |
@@ -111,9 +120,6 @@ provision:
       if [ -f "$HOME/.claude/.credentials.json" ]; then
         export CLAUDE_CODE_OAUTH_TOKEN=$(grep -o '"accessToken":"[^"]*"' "$HOME/.claude/.credentials.json" | cut -d'"' -f4)
       fi
-      # Chromium path for Puppeteer/Playwright
-      export CHROME_PATH=/usr/bin/chromium-browser
-      export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
       PROFILE
 
       # Add to .bashrc for interactive shells
@@ -134,10 +140,22 @@ provision:
       # Aliases
       alias ll='ls -la'
       alias claude='claude --dangerously-skip-permissions'
-      # Chromium path for Puppeteer/Playwright
+      BASHRC
+
+  #{{CHROMIUM_ENV_START}}
+  - mode: user
+    script: |
+      #!/bin/bash
+      # Add Chromium paths for Puppeteer/Playwright
+      cat >> ~/.profile << 'PROFILE'
+      export CHROME_PATH=/usr/bin/chromium-browser
+      export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+      PROFILE
+      cat >> ~/.bashrc << 'BASHRC'
       export CHROME_PATH=/usr/bin/chromium-browser
       export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
       BASHRC
+  #{{CHROMIUM_ENV_END}}
 
 # Enable containerd for running containers inside the VM if needed
 containerd:
@@ -159,5 +177,5 @@ message: |
 
   Your codebase is mounted at /workspace
   Run 'claude' to start Claude Code in YOLO mode
-  {{DOCKER_MESSAGE}}
+  {{EXTRAS_MESSAGE}}
   Tip: Use 'tmux' for persistent sessions

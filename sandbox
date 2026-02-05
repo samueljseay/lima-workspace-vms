@@ -35,11 +35,11 @@ Usage:
 Options:
     --name, -n <name>                      Custom sandbox name
     --model, -m <model>                    Claude model (default: opus)
-    --no-docker                            Disable Docker (leaner VM, 50GB disk)
+    --lean                                 Minimal VM without Docker/Chromium (50GB disk)
 
 Examples:
-    sandbox ~/Code/myproject              # Creates sandbox with Docker support
-    sandbox ~/Code/myproject --no-docker  # Lean sandbox without containers
+    sandbox ~/Code/myproject              # Full VM: Docker, Chromium, 100GB
+    sandbox ~/Code/myproject --lean       # Lean VM: no Docker/Chromium, 50GB
     sandbox ~/Code/myproject --model sonnet
     sandbox myproject                     # Attach to existing "myproject" sandbox
     sandbox myproject run claude          # Run claude in existing sandbox
@@ -48,7 +48,8 @@ Examples:
     sandbox stop myproject
     sandbox rm myproject
 
-The VM comes with Claude Code and Docker pre-installed. Your codebase is mounted at /workspace.
+The VM comes with Claude Code pre-installed. Your codebase is mounted at /workspace.
+Full mode includes Docker, Chromium (for dev-browser), and 100GB disk.
 EOF
 }
 
@@ -126,7 +127,7 @@ create_sandbox() {
     local name="$1"
     local code_path="$2"
     local model="${3:-$DEFAULT_MODEL}"
-    local no_docker="${4:-false}"
+    local lean="${4:-false}"
     local vm_name
     vm_name="$(get_vm_name "$name")"
 
@@ -139,10 +140,10 @@ create_sandbox() {
     # Sync auth from Keychain
     sync_claude_auth "$model"
 
-    if [[ "$no_docker" == "true" ]]; then
-        log_info "Creating sandbox '$name' (lean, no Docker) with $code_path mounted..."
+    if [[ "$lean" == "true" ]]; then
+        log_info "Creating sandbox '$name' (lean) with $code_path mounted..."
     else
-        log_info "Creating sandbox '$name' (with Docker) with $code_path mounted..."
+        log_info "Creating sandbox '$name' (full: Docker + Chromium) with $code_path mounted..."
     fi
 
     # Generate config from template
@@ -153,20 +154,27 @@ create_sandbox() {
     # Substitute code path
     sed -i.bak "s|{{CODE_PATH}}|$code_path|g" "$tmp_config"
 
-    # Configure container support
-    if [[ "$no_docker" == "true" ]]; then
-        # No Docker: 50GB disk, remove Docker provisioning
+    # Configure VM based on lean mode
+    if [[ "$lean" == "true" ]]; then
+        # Lean mode: 50GB disk, remove Docker and Chromium
         sed -i.bak "s|{{DISK_SIZE}}|50GiB|g" "$tmp_config"
-        sed -i.bak "s|{{DOCKER_MESSAGE}}||g" "$tmp_config"
+        sed -i.bak "s|{{EXTRAS_MESSAGE}}||g" "$tmp_config"
         # Remove Docker provisioning section
-        sed -i.bak '/#{{DOCKER_PROVISION_START}}/,/#{{DOCKER_PROVISION_END}}/d' "$tmp_config"
+        sed -i.bak '/#{{DOCKER_START}}/,/#{{DOCKER_END}}/d' "$tmp_config"
+        # Remove Chromium packages and env vars
+        sed -i.bak '/#{{CHROMIUM_START}}/,/#{{CHROMIUM_END}}/d' "$tmp_config"
+        sed -i.bak '/#{{CHROMIUM_ENV_START}}/,/#{{CHROMIUM_ENV_END}}/d' "$tmp_config"
     else
-        # Docker enabled: 100GB disk, keep Docker provisioning
+        # Full mode: 100GB disk, keep everything
         sed -i.bak "s|{{DISK_SIZE}}|100GiB|g" "$tmp_config"
-        sed -i.bak "s|{{DOCKER_MESSAGE}}|Docker is available for running containers (e.g., wp-env)|g" "$tmp_config"
+        sed -i.bak "s|{{EXTRAS_MESSAGE}}|Docker and Chromium (dev-browser) are available|g" "$tmp_config"
         # Remove the marker comments but keep the content
-        sed -i.bak 's|#{{DOCKER_PROVISION_START}}||g' "$tmp_config"
-        sed -i.bak 's|#{{DOCKER_PROVISION_END}}||g' "$tmp_config"
+        sed -i.bak 's|#{{DOCKER_START}}||g' "$tmp_config"
+        sed -i.bak 's|#{{DOCKER_END}}||g' "$tmp_config"
+        sed -i.bak 's|#{{CHROMIUM_START}}||g' "$tmp_config"
+        sed -i.bak 's|#{{CHROMIUM_END}}||g' "$tmp_config"
+        sed -i.bak 's|#{{CHROMIUM_ENV_START}}||g' "$tmp_config"
+        sed -i.bak 's|#{{CHROMIUM_ENV_END}}||g' "$tmp_config"
     fi
 
     # Clean up backup files from sed -i
@@ -250,7 +258,7 @@ cmd_enter() {
     local code_path="${1:-}"
     local name=""
     local model="$DEFAULT_MODEL"
-    local no_docker="false"
+    local lean="false"
 
     if [[ -z "$code_path" ]]; then
         usage
@@ -289,8 +297,8 @@ cmd_enter() {
                 model="${2:-}"
                 shift 2
                 ;;
-            --no-docker)
-                no_docker="true"
+            --lean)
+                lean="true"
                 shift
                 ;;
             *)
@@ -316,7 +324,7 @@ cmd_enter() {
 
     # Create if doesn't exist
     if ! vm_exists "$vm_name"; then
-        create_sandbox "$name" "$code_path" "$model" "$no_docker"
+        create_sandbox "$name" "$code_path" "$model" "$lean"
     fi
 
     # Attach (interactive)
@@ -329,7 +337,7 @@ cmd_run() {
     local code_path="${2:-}"
     local name=""
     local model="$DEFAULT_MODEL"
-    local no_docker="false"
+    local lean="false"
 
     if [[ -z "$cmd" || -z "$code_path" ]]; then
         log_error "Usage: sandbox run <command> <path> [--name <name>] [--model <model>]"
@@ -348,8 +356,8 @@ cmd_run() {
                 model="${2:-}"
                 shift 2
                 ;;
-            --no-docker)
-                no_docker="true"
+            --lean)
+                lean="true"
                 shift
                 ;;
             *)
@@ -376,7 +384,7 @@ cmd_run() {
 
     # Create if doesn't exist
     if ! vm_exists "$vm_name"; then
-        create_sandbox "$name" "$code_path" "$model" "$no_docker"
+        create_sandbox "$name" "$code_path" "$model" "$lean"
     fi
 
     # Run command
