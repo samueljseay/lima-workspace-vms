@@ -171,13 +171,15 @@ attach_sandbox() {
         # Run command (set up paths first)
         log_info "Running in sandbox '$name': $cmd"
         echo ""
+        exec 3>&2 2> >(grep -v "^bash: line 1: cd:" >&3)
         limactl shell "$vm_name" -- bash -c "
             cd /workspace 2>/dev/null
             export PATH=\"\$HOME/.local/bin:\$PATH\"
             export NVM_DIR=\"\$HOME/.nvm\"
             [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
             $cmd
-        " 2> >(grep -v "^bash: line 1: cd:" >&2)
+        "
+        exec 2>&3 3>&-
     else
         # Interactive shell
         log_info "Entering sandbox '$name' (/workspace)"
