@@ -23,7 +23,7 @@ mounts:
       cache: mmap
   # Share Claude config from host (for auth)
   - location: "~/.claude"
-    mountPoint: "~/.claude"
+    mountPoint: "/home/{{.User}}.linux/.claude"
     writable: true
     9p:
       securityModel: mapped-xattr
