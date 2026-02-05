@@ -167,34 +167,24 @@ attach_sandbox() {
 
     if [[ "$status" != "Running" ]]; then
         log_info "Starting sandbox '$name'..."
-        exec 3>&2 2> >(grep -v "^bash: line 1: cd:" >&3)
-        sleep 0.1
         limactl start "$vm_name"
-        exec 2>&3 3>&-
     fi
 
     if [[ -n "$cmd" ]]; then
         # Run command (set up paths first)
         log_info "Running in sandbox '$name': $cmd"
         echo ""
-        exec 3>&2 2> >(grep -v "^bash: line 1: cd:" >&3)
-        sleep 0.1  # Wait for filter process to be ready
-        limactl shell "$vm_name" -- bash -c "
-            cd /workspace 2>/dev/null
+        limactl shell --workdir /workspace "$vm_name" -- bash -c "
             export PATH=\"\$HOME/.local/bin:\$PATH\"
             export NVM_DIR=\"\$HOME/.nvm\"
             [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
             $cmd
         "
-        exec 2>&3 3>&-
     else
         # Interactive shell
         log_info "Entering sandbox '$name' (/workspace)"
         echo ""
-        exec 3>&2 2> >(grep -v "^bash: line 1: cd:" >&3)
-        sleep 0.1  # Wait for filter process to be ready
         limactl shell --workdir /workspace "$vm_name"
-        exec 2>&3 3>&-
     fi
 }
 
