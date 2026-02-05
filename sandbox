@@ -23,6 +23,7 @@ Claude Sandbox - Isolated development environments
 
 Usage:
     sandbox <path> [--name <name>]         Enter a sandbox (creates if needed)
+    sandbox <name>                         Attach to existing sandbox by name
     sandbox run <cmd> <path> [--name <n>]  Run a command in a sandbox
     sandbox list                           List all sandboxes
     sandbox stop <name>                    Stop a running sandbox
@@ -30,6 +31,7 @@ Usage:
 
 Examples:
     sandbox ~/Code/myproject              # Creates and enters sandbox "myproject"
+    sandbox myproject                     # Attach to existing "myproject" sandbox
     sandbox run claude ~/Code/myproject   # Run claude in the sandbox
     sandbox run "npm test" ~/Code/myproject
     sandbox list
@@ -194,7 +196,16 @@ cmd_enter() {
         exit 1
     fi
 
-    # Resolve to absolute path
+    # Check if argument is an existing sandbox name (not a path)
+    local vm_name
+    vm_name="$(get_vm_name "$code_path")"
+    if vm_exists "$vm_name"; then
+        # Attach to existing sandbox by name
+        attach_sandbox "$code_path"
+        return
+    fi
+
+    # Otherwise treat as a path
     if [[ ! -d "$code_path" ]]; then
         log_error "Path does not exist: $code_path"
         exit 1
@@ -206,7 +217,6 @@ cmd_enter() {
         name="$(basename "$code_path")"
     fi
 
-    local vm_name
     vm_name="$(get_vm_name "$name")"
 
     # Create if doesn't exist
