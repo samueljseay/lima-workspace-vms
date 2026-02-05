@@ -17,21 +17,28 @@ log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warn() { echo -e "${YELLOW}!${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
 
+DEFAULT_MODEL="opus"
+
 usage() {
     cat <<EOF
 Claude Sandbox - Isolated development environments
 
 Usage:
-    sandbox <path> [--name <name>]         Enter a sandbox (creates if needed)
+    sandbox <path> [options]               Enter a sandbox (creates if needed)
     sandbox <name>                         Attach to existing sandbox by name
     sandbox <name> run <cmd>               Run a command in existing sandbox
-    sandbox run <cmd> <path> [--name <n>]  Run a command in a sandbox (creates if needed)
+    sandbox run <cmd> <path> [options]     Run a command in a sandbox (creates if needed)
     sandbox list                           List all sandboxes
     sandbox stop <name>                    Stop a running sandbox
     sandbox rm <name>                      Delete a sandbox
 
+Options:
+    --name, -n <name>                      Custom sandbox name
+    --model, -m <model>                    Claude model (default: opus)
+
 Examples:
     sandbox ~/Code/myproject              # Creates and enters sandbox "myproject"
+    sandbox ~/Code/myproject --model sonnet
     sandbox myproject                     # Attach to existing "myproject" sandbox
     sandbox myproject run claude          # Run claude in existing sandbox
     sandbox run claude ~/Code/myproject   # Run claude (creates sandbox if needed)
@@ -66,10 +73,29 @@ vm_status() {
     limactl list --json 2>/dev/null | jq -rs ".[] | select(.name == \"$vm_name\") | .status"
 }
 
+# Ensure model preference is set in settings.json
+ensure_model_setting() {
+    local model="${1:-$DEFAULT_MODEL}"
+    local settings_file="$HOME/.claude/settings.json"
+
+    if [[ -f "$settings_file" ]]; then
+        # Update existing file with model setting
+        local tmp=$(mktemp)
+        jq --arg model "$model" '.model = $model' "$settings_file" > "$tmp" 2>/dev/null && mv "$tmp" "$settings_file"
+    else
+        # Create new settings file with model
+        echo "{\"model\": \"$model\"}" > "$settings_file"
+    fi
+}
+
 # Sync Claude auth from macOS Keychain to file for Linux VM
 sync_claude_auth() {
+    local model="${1:-$DEFAULT_MODEL}"
     local creds_file="$HOME/.claude/.credentials.json"
     local config_file="$HOME/.claude.json"
+
+    # Ensure model preference is set (shared via mount)
+    ensure_model_setting "$model"
 
     # Try to extract credentials from macOS Keychain
     local creds
@@ -97,6 +123,7 @@ sync_claude_auth() {
 create_sandbox() {
     local name="$1"
     local code_path="$2"
+    local model="${3:-$DEFAULT_MODEL}"
     local vm_name
     vm_name="$(get_vm_name "$name")"
 
@@ -107,7 +134,7 @@ create_sandbox() {
     fi
 
     # Sync auth from Keychain
-    sync_claude_auth
+    sync_claude_auth "$model"
 
     log_info "Creating sandbox '$name' with $code_path mounted..."
 
@@ -155,11 +182,12 @@ create_sandbox() {
 attach_sandbox() {
     local name="$1"
     local cmd="${2:-}"
+    local model="${3:-$DEFAULT_MODEL}"
     local vm_name
     vm_name="$(get_vm_name "$name")"
 
     # Sync auth from Keychain before attaching
-    sync_claude_auth
+    sync_claude_auth "$model"
 
     # Check status and start if needed
     local status
@@ -192,6 +220,7 @@ attach_sandbox() {
 cmd_enter() {
     local code_path="${1:-}"
     local name=""
+    local model="$DEFAULT_MODEL"
 
     if [[ -z "$code_path" ]]; then
         usage
@@ -210,20 +239,24 @@ cmd_enter() {
                 log_error "Usage: sandbox <name> run <command>"
                 exit 1
             fi
-            attach_sandbox "$code_path" "$cmd"
+            attach_sandbox "$code_path" "$cmd" "$model"
         else
             # Just attach to existing sandbox
-            attach_sandbox "$code_path"
+            attach_sandbox "$code_path" "" "$model"
         fi
         return
     fi
 
-    # Not an existing sandbox - parse remaining args for --name flag
+    # Not an existing sandbox - parse remaining args for flags
     shift || true
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --name|-n)
                 name="${2:-}"
+                shift 2
+                ;;
+            --model|-m)
+                model="${2:-}"
                 shift 2
                 ;;
             *)
@@ -249,11 +282,11 @@ cmd_enter() {
 
     # Create if doesn't exist
     if ! vm_exists "$vm_name"; then
-        create_sandbox "$name" "$code_path"
+        create_sandbox "$name" "$code_path" "$model"
     fi
 
     # Attach (interactive)
-    attach_sandbox "$name"
+    attach_sandbox "$name" "" "$model"
 }
 
 # Run a command in a sandbox
@@ -261,18 +294,23 @@ cmd_run() {
     local cmd="${1:-}"
     local code_path="${2:-}"
     local name=""
+    local model="$DEFAULT_MODEL"
 
     if [[ -z "$cmd" || -z "$code_path" ]]; then
-        log_error "Usage: sandbox run <command> <path> [--name <name>]"
+        log_error "Usage: sandbox run <command> <path> [--name <name>] [--model <model>]"
         exit 1
     fi
 
-    # Parse remaining args for --name flag
+    # Parse remaining args for flags
     shift 2 || true
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --name|-n)
                 name="${2:-}"
+                shift 2
+                ;;
+            --model|-m)
+                model="${2:-}"
                 shift 2
                 ;;
             *)
@@ -299,11 +337,11 @@ cmd_run() {
 
     # Create if doesn't exist
     if ! vm_exists "$vm_name"; then
-        create_sandbox "$name" "$code_path"
+        create_sandbox "$name" "$code_path" "$model"
     fi
 
     # Run command
-    attach_sandbox "$name" "$cmd"
+    attach_sandbox "$name" "$cmd" "$model"
 }
 
 cmd_list() {

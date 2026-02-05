@@ -37,6 +37,10 @@ sandbox run "npm test" ~/Code/myproject
 sandbox ~/Code/myproject --name foo
 sandbox run claude ~/Code/myproject --name foo
 
+# Specify Claude model (default: opus)
+sandbox ~/Code/myproject --model sonnet
+sandbox run claude ~/Code/myproject --model haiku
+
 # Management
 sandbox list              # List all sandboxes
 sandbox stop myproject    # Stop (preserves state)
@@ -54,9 +58,11 @@ Each sandbox VM comes with:
 - Git, ripgrep, fd, tmux, vim
 - Your codebase mounted at `/workspace`
 
-## Authentication
+## Authentication & Settings
 
 Claude authentication is automatically synced from your macOS Keychain. If you're logged into Claude Code on your host machine, the sandbox will use the same credentials.
+
+The model preference (default: `opus`) is set in `~/.claude/settings.json` on your host and shared with the VM via mount. Use `--model` to override.
 
 ## Requirements
 
