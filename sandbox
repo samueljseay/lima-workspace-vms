@@ -113,7 +113,7 @@ create_sandbox() {
     # Install Claude Code (native)
     limactl shell "$vm_name" -- bash -c '
         # Install Claude Code via native installer
-        if [ ! -f "$HOME/.claude/bin/claude" ]; then
+        if [ ! -f "$HOME/.local/bin/claude" ]; then
             curl -fsSL https://claude.ai/install.sh | bash
             echo "✓ Claude Code installed"
         fi
@@ -155,7 +155,7 @@ attach_sandbox() {
         log_info "Running in sandbox '$name': $cmd"
         echo ""
         limactl shell --workdir /workspace "$vm_name" -- bash -c "
-            export PATH=\"\$HOME/.claude/bin:\$PATH\"
+            export PATH=\"\$HOME/.local/bin:\$PATH\"
             export NVM_DIR=\"\$HOME/.nvm\"
             [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
             $cmd

@@ -70,7 +70,7 @@ provision:
       set -eux -o pipefail
       # Add to .profile for login shells
       cat >> ~/.profile << 'PROFILE'
-      export PATH="$HOME/.claude/bin:$PATH"
+      export PATH="$HOME/.local/bin:$PATH"
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
       if ! infocmp "$TERM" &>/dev/null 2>&1; then
@@ -81,7 +81,7 @@ provision:
       # Add to .bashrc for interactive shells
       cat >> ~/.bashrc << 'BASHRC'
       # Claude Sandbox environment
-      export PATH="$HOME/.claude/bin:$PATH"
+      export PATH="$HOME/.local/bin:$PATH"
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
       if ! infocmp "$TERM" &>/dev/null 2>&1; then
