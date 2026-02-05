@@ -22,7 +22,14 @@ ln -s "$PWD/sandbox" /usr/local/bin/sandbox
 # Enter a sandbox (creates on first run)
 sandbox ~/Code/myproject
 
-# Run a command in a sandbox
+# Attach to existing sandbox by name
+sandbox myproject
+
+# Run a command in an existing sandbox
+sandbox myproject run claude
+sandbox myproject run "npm test"
+
+# Run a command (creates sandbox if needed)
 sandbox run claude ~/Code/myproject
 sandbox run "npm test" ~/Code/myproject
 
@@ -41,11 +48,15 @@ sandbox rm myproject      # Delete
 Each sandbox VM comes with:
 
 - Ubuntu 24.04
-- Claude Code (native installer)
+- Claude Code (native installer, YOLO mode by default)
 - Node.js (via nvm)
 - PHP + Composer
 - Git, ripgrep, fd, tmux, vim
 - Your codebase mounted at `/workspace`
+
+## Authentication
+
+Claude authentication is automatically synced from your macOS Keychain. If you're logged into Claude Code on your host machine, the sandbox will use the same credentials.
 
 ## Requirements
 
@@ -55,15 +66,15 @@ Each sandbox VM comes with:
 ## Tips
 
 - Use `tmux` inside the sandbox for persistent sessions
-- The `claude` alias automatically enables YOLO mode
+- The `claude` alias automatically enables YOLO mode (`--dangerously-skip-permissions`)
 - Sandboxes persist across restarts - use `sandbox stop` to free resources
 - Multiple sandboxes can run simultaneously
-- Your IDE on the host can edit files directly (they're the same files)
+- Your IDE on the host can edit files directly (they're the same files via mount)
 
 ## Customization
 
 Edit `lima-template.yaml` to adjust:
 
-- CPU/memory allocation
+- CPU/memory allocation (default: 4 CPUs, 8GB RAM, 50GB disk)
 - Pre-installed packages
 - Default shell configuration
