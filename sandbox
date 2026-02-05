@@ -68,6 +68,7 @@ vm_status() {
 # Sync Claude auth from macOS Keychain to file for Linux VM
 sync_claude_auth() {
     local creds_file="$HOME/.claude/.credentials.json"
+    local config_file="$HOME/.claude.json"
 
     # Try to extract credentials from macOS Keychain
     local creds
@@ -76,6 +77,17 @@ sync_claude_auth() {
     if [[ -n "$creds" ]]; then
         echo "$creds" > "$creds_file"
         chmod 600 "$creds_file"
+
+        # Also set hasCompletedOnboarding to skip interactive setup
+        if [[ -f "$config_file" ]]; then
+            # Update existing file
+            local tmp=$(mktemp)
+            jq '.hasCompletedOnboarding = true' "$config_file" > "$tmp" 2>/dev/null && mv "$tmp" "$config_file"
+        else
+            # Create new file
+            echo '{"hasCompletedOnboarding": true}' > "$config_file"
+        fi
+
         log_success "Synced Claude auth from Keychain"
     fi
 }

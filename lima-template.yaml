@@ -68,6 +68,9 @@ provision:
     script: |
       #!/bin/bash
       set -eux -o pipefail
+      # Create ~/.claude.json with onboarding flag to skip setup prompts
+      echo '{"hasCompletedOnboarding": true}' > ~/.claude.json
+
       # Add to .profile for login shells
       cat >> ~/.profile << 'PROFILE'
       export PATH="$HOME/.local/bin:$PATH"
@@ -75,6 +78,10 @@ provision:
       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
       if ! infocmp "$TERM" &>/dev/null 2>&1; then
         export TERM=xterm-256color
+      fi
+      # Set Claude OAuth token from shared credentials
+      if [ -f "$HOME/.claude/.credentials.json" ]; then
+        export CLAUDE_CODE_OAUTH_TOKEN=$(grep -o '"accessToken":"[^"]*"' "$HOME/.claude/.credentials.json" | cut -d'"' -f4)
       fi
       PROFILE
 
@@ -86,6 +93,10 @@ provision:
       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
       if ! infocmp "$TERM" &>/dev/null 2>&1; then
         export TERM=xterm-256color
+      fi
+      # Set Claude OAuth token from shared credentials
+      if [ -f "$HOME/.claude/.credentials.json" ]; then
+        export CLAUDE_CODE_OAUTH_TOKEN=$(grep -o '"accessToken":"[^"]*"' "$HOME/.claude/.credentials.json" | cut -d'"' -f4)
       fi
       # Nice prompt showing we're in a sandbox
       PS1='\[\033[0;35m\][sandbox]\[\033[0m\] \[\033[0;34m\]\w\[\033[0m\] \$ '
