@@ -133,10 +133,14 @@ attach_sandbox() {
     fi
 
     if [[ -n "$cmd" ]]; then
-        # Run command
+        # Run command (source nvm first for node/claude access)
         log_info "Running in sandbox '$name': $cmd"
         echo ""
-        limactl shell --workdir /workspace "$vm_name" -- bash -lc "$cmd"
+        limactl shell --workdir /workspace "$vm_name" -- bash -c "
+            export NVM_DIR=\"\$HOME/.nvm\"
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
+            $cmd
+        "
     else
         # Interactive shell
         log_info "Entering sandbox '$name' (/workspace)"
