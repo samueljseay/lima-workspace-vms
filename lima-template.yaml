@@ -70,13 +70,9 @@ provision:
       set -eux -o pipefail
       cat >> ~/.bashrc << 'BASHRC'
       # Claude Sandbox environment
+      export PATH="$HOME/.claude/bin:$PATH"
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-      # Sync Claude auth from shared credentials to Linux config location
-      if [ -f "$HOME/.claude/.credentials.json" ]; then
-        mkdir -p "$HOME/.config/claude-code"
-        cp "$HOME/.claude/.credentials.json" "$HOME/.config/claude-code/auth.json" 2>/dev/null
-      fi
       # Nice prompt showing we're in a sandbox
       PS1='\[\033[0;35m\][sandbox]\[\033[0m\] \[\033[0;34m\]\w\[\033[0m\] \$ '
       # Aliases
