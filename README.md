@@ -53,10 +53,12 @@ Each sandbox VM comes with:
 
 - Ubuntu 24.04
 - Claude Code (native installer, YOLO mode by default)
+- Docker + Docker Compose (for wp-env, etc.)
 - Node.js (via nvm)
 - PHP + Composer
 - Git, ripgrep, fd, tmux, vim
 - Your codebase mounted at `/workspace`
+- 100GB disk (50GB with `--no-docker`)
 
 ## Authentication & Settings
 
@@ -76,6 +78,8 @@ The model preference (default: `opus`) is set in `~/.claude/settings.json` on yo
 - Sandboxes persist across restarts - use `sandbox stop` to free resources
 - Multiple sandboxes can run simultaneously
 - Your IDE on the host can edit files directly (they're the same files via mount)
+- Docker containers (e.g., wp-env) run inside the VM for full isolation
+- Lima auto-forwards ports, so `localhost:8888` in the VM is accessible on your Mac
 
 ## Customization
 
