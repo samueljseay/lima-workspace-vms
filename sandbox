@@ -70,6 +70,12 @@ create_sandbox() {
     local vm_name
     vm_name="$(get_vm_name "$name")"
 
+    # Ensure ~/.claude exists for auth sharing
+    if [[ ! -d "$HOME/.claude" ]]; then
+        log_info "Creating ~/.claude directory for auth sharing..."
+        mkdir -p "$HOME/.claude"
+    fi
+
     log_info "Creating sandbox '$name' with $code_path mounted..."
 
     # Generate config from template with the code path substituted
@@ -175,10 +181,11 @@ cmd_enter() {
     fi
 
     # Resolve to absolute path
-    code_path="$(cd "$code_path" 2>/dev/null && pwd)" || {
+    if [[ ! -d "$code_path" ]]; then
         log_error "Path does not exist: $code_path"
         exit 1
-    }
+    fi
+    code_path="$(cd "$code_path" && pwd)"
 
     # Derive name from directory if not specified
     if [[ -z "$name" ]]; then
@@ -224,10 +231,11 @@ cmd_run() {
     done
 
     # Resolve to absolute path
-    code_path="$(cd "$code_path" 2>/dev/null && pwd)" || {
+    if [[ ! -d "$code_path" ]]; then
         log_error "Path does not exist: $code_path"
         exit 1
-    }
+    fi
+    code_path="$(cd "$code_path" && pwd)"
 
     # Derive name from directory if not specified
     if [[ -z "$name" ]]; then
