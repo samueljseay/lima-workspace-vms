@@ -24,7 +24,8 @@ Claude Sandbox - Isolated development environments
 Usage:
     sandbox <path> [--name <name>]         Enter a sandbox (creates if needed)
     sandbox <name>                         Attach to existing sandbox by name
-    sandbox run <cmd> <path> [--name <n>]  Run a command in a sandbox
+    sandbox <name> run <cmd>               Run a command in existing sandbox
+    sandbox run <cmd> <path> [--name <n>]  Run a command in a sandbox (creates if needed)
     sandbox list                           List all sandboxes
     sandbox stop <name>                    Stop a running sandbox
     sandbox rm <name>                      Delete a sandbox
@@ -32,8 +33,8 @@ Usage:
 Examples:
     sandbox ~/Code/myproject              # Creates and enters sandbox "myproject"
     sandbox myproject                     # Attach to existing "myproject" sandbox
-    sandbox run claude ~/Code/myproject   # Run claude in the sandbox
-    sandbox run "npm test" ~/Code/myproject
+    sandbox myproject run claude          # Run claude in existing sandbox
+    sandbox run claude ~/Code/myproject   # Run claude (creates sandbox if needed)
     sandbox list
     sandbox stop myproject
     sandbox rm myproject
@@ -192,7 +193,32 @@ cmd_enter() {
     local code_path="${1:-}"
     local name=""
 
-    # Parse --name flag
+    if [[ -z "$code_path" ]]; then
+        usage
+        exit 1
+    fi
+
+    # Check if first arg is an existing sandbox name
+    local vm_name
+    vm_name="$(get_vm_name "$code_path")"
+    if vm_exists "$vm_name"; then
+        # Check for: sandbox <name> run <cmd>
+        if [[ "${2:-}" == "run" ]]; then
+            shift 2  # skip name and "run"
+            local cmd="$*"
+            if [[ -z "$cmd" ]]; then
+                log_error "Usage: sandbox <name> run <command>"
+                exit 1
+            fi
+            attach_sandbox "$code_path" "$cmd"
+        else
+            # Just attach to existing sandbox
+            attach_sandbox "$code_path"
+        fi
+        return
+    fi
+
+    # Not an existing sandbox - parse remaining args for --name flag
     shift || true
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -206,20 +232,6 @@ cmd_enter() {
                 ;;
         esac
     done
-
-    if [[ -z "$code_path" ]]; then
-        usage
-        exit 1
-    fi
-
-    # Check if argument is an existing sandbox name (not a path)
-    local vm_name
-    vm_name="$(get_vm_name "$code_path")"
-    if vm_exists "$vm_name"; then
-        # Attach to existing sandbox by name
-        attach_sandbox "$code_path"
-        return
-    fi
 
     # Otherwise treat as a path
     if [[ ! -d "$code_path" ]]; then
