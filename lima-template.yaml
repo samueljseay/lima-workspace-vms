@@ -18,14 +18,13 @@ mounts:
   - location: "{{CODE_PATH}}"
     mountPoint: "/workspace"
     writable: true
-    # Use virtiofs for better performance on macOS
     9p:
       securityModel: mapped-xattr
       cache: mmap
 
 # SSH configuration
 ssh:
-  localPort: 0  # Auto-assign port
+  localPort: 0
   loadDotSSHPubKeys: true
 
 # Provision the VM with essentials
@@ -34,8 +33,6 @@ provision:
     script: |
       #!/bin/bash
       set -eux -o pipefail
-
-      # Update and install essentials
       apt-get update
       apt-get install -y \
         build-essential \
@@ -48,10 +45,7 @@ provision:
         fd-find \
         htop \
         vim \
-        tmux
-
-      # Install PHP and common extensions
-      apt-get install -y \
+        tmux \
         php \
         php-cli \
         php-curl \
@@ -60,8 +54,6 @@ provision:
         php-zip \
         php-mysql \
         composer
-
-      # Clean up
       apt-get clean
       rm -rf /var/lib/apt/lists/*
 
@@ -69,21 +61,16 @@ provision:
     script: |
       #!/bin/bash
       set -eux -o pipefail
-
-      # Setup bash profile for workspace
-      cat >> ~/.bashrc << 'EOF'
-
-# Claude Sandbox environment
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
-# Nice prompt showing we're in a sandbox
-PS1='\[\033[0;35m\][sandbox]\[\033[0m\] \[\033[0;34m\]\w\[\033[0m\] \$ '
-
-# Aliases
-alias ll='ls -la'
-alias claude='claude --dangerously-skip-permissions'
-EOF
+      cat >> ~/.bashrc << 'BASHRC'
+      # Claude Sandbox environment
+      export NVM_DIR="$HOME/.nvm"
+      [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+      # Nice prompt showing we're in a sandbox
+      PS1='\[\033[0;35m\][sandbox]\[\033[0m\] \[\033[0;34m\]\w\[\033[0m\] \$ '
+      # Aliases
+      alias ll='ls -la'
+      alias claude='claude --dangerously-skip-permissions'
+      BASHRC
 
 # Enable containerd for running containers inside the VM if needed
 containerd:
