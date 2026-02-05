@@ -21,6 +21,13 @@ mounts:
     9p:
       securityModel: mapped-xattr
       cache: mmap
+  # Share Claude config from host (for auth)
+  - location: "~/.claude"
+    mountPoint: "~/.claude"
+    writable: true
+    9p:
+      securityModel: mapped-xattr
+      cache: mmap
 
 # SSH configuration
 ssh:
