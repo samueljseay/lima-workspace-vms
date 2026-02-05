@@ -19,20 +19,21 @@ ln -s "$PWD/sandbox" /usr/local/bin/sandbox
 ## Usage
 
 ```bash
-# Run a sandbox (creates on first run, then attaches)
+# Enter a sandbox (creates on first run)
 sandbox ~/Code/myproject
 
-# Same, but with a custom name
+# Run a command in a sandbox
+sandbox run claude ~/Code/myproject
+sandbox run "npm test" ~/Code/myproject
+
+# Custom sandbox name
 sandbox ~/Code/myproject --name foo
+sandbox run claude ~/Code/myproject --name foo
 
-# List all sandboxes
-sandbox list
-
-# Stop a sandbox (preserves state)
-sandbox stop myproject
-
-# Delete a sandbox
-sandbox rm myproject
+# Management
+sandbox list              # List all sandboxes
+sandbox stop myproject    # Stop (preserves state)
+sandbox rm myproject      # Delete
 ```
 
 ## What's Included

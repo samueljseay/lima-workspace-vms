@@ -22,14 +22,16 @@ usage() {
 Claude Sandbox - Isolated development environments
 
 Usage:
-    sandbox <path> [--name <name>]    Run a sandbox (creates if needed)
-    sandbox list                      List all sandboxes
-    sandbox stop <name>               Stop a running sandbox
-    sandbox rm <name>                 Delete a sandbox
+    sandbox <path> [--name <name>]         Enter a sandbox (creates if needed)
+    sandbox run <cmd> <path> [--name <n>]  Run a command in a sandbox
+    sandbox list                           List all sandboxes
+    sandbox stop <name>                    Stop a running sandbox
+    sandbox rm <name>                      Delete a sandbox
 
 Examples:
     sandbox ~/Code/myproject              # Creates and enters sandbox "myproject"
-    sandbox ~/Code/myproject --name foo   # Creates and enters sandbox "foo"
+    sandbox run claude ~/Code/myproject   # Run claude in the sandbox
+    sandbox run "npm test" ~/Code/myproject
     sandbox list
     sandbox stop myproject
     sandbox rm myproject
@@ -114,9 +116,10 @@ create_sandbox() {
     log_success "Setup complete!"
 }
 
-# Attach to an existing sandbox
+# Attach to an existing sandbox, optionally running a command
 attach_sandbox() {
     local name="$1"
+    local cmd="${2:-}"
     local vm_name
     vm_name="$(get_vm_name "$name")"
 
@@ -129,15 +132,21 @@ attach_sandbox() {
         limactl start "$vm_name"
     fi
 
-    log_info "Entering sandbox '$name' (/workspace)"
-    echo ""
-
-    # Shell in, starting in /workspace
-    limactl shell --workdir /workspace "$vm_name"
+    if [[ -n "$cmd" ]]; then
+        # Run command
+        log_info "Running in sandbox '$name': $cmd"
+        echo ""
+        limactl shell --workdir /workspace "$vm_name" -- bash -lc "$cmd"
+    else
+        # Interactive shell
+        log_info "Entering sandbox '$name' (/workspace)"
+        echo ""
+        limactl shell --workdir /workspace "$vm_name"
+    fi
 }
 
-# Main command: run a sandbox (create if needed, then attach)
-cmd_run() {
+# Main command: enter a sandbox (create if needed, then attach)
+cmd_enter() {
     local code_path="${1:-}"
     local name=""
 
@@ -180,8 +189,57 @@ cmd_run() {
         create_sandbox "$name" "$code_path"
     fi
 
-    # Attach
+    # Attach (interactive)
     attach_sandbox "$name"
+}
+
+# Run a command in a sandbox
+cmd_run() {
+    local cmd="${1:-}"
+    local code_path="${2:-}"
+    local name=""
+
+    if [[ -z "$cmd" || -z "$code_path" ]]; then
+        log_error "Usage: sandbox run <command> <path> [--name <name>]"
+        exit 1
+    fi
+
+    # Parse remaining args for --name flag
+    shift 2 || true
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --name|-n)
+                name="${2:-}"
+                shift 2
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    # Resolve to absolute path
+    code_path="$(cd "$code_path" 2>/dev/null && pwd)" || {
+        log_error "Path does not exist: $code_path"
+        exit 1
+    }
+
+    # Derive name from directory if not specified
+    if [[ -z "$name" ]]; then
+        name="$(basename "$code_path")"
+    fi
+
+    local vm_name
+    vm_name="$(get_vm_name "$name")"
+
+    # Create if doesn't exist
+    if ! vm_exists "$vm_name"; then
+        create_sandbox "$name" "$code_path"
+    fi
+
+    # Run command
+    attach_sandbox "$name" "$cmd"
 }
 
 cmd_list() {
@@ -261,6 +319,10 @@ cmd_delete() {
 check_lima
 
 case "${1:-}" in
+    run)
+        shift
+        cmd_run "$@"
+        ;;
     list|ls)
         cmd_list
         ;;
@@ -277,7 +339,7 @@ case "${1:-}" in
         usage
         ;;
     *)
-        # Default: treat as path and run
-        cmd_run "$@"
+        # Default: treat as path and enter interactive shell
+        cmd_enter "$@"
         ;;
 esac
