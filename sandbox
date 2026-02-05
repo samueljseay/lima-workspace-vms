@@ -154,17 +154,18 @@ attach_sandbox() {
         # Run command (set up paths first)
         log_info "Running in sandbox '$name': $cmd"
         echo ""
-        limactl shell --workdir /workspace "$vm_name" -- bash -c "
+        limactl shell "$vm_name" -- bash -c "
+            cd /workspace
             export PATH=\"\$HOME/.local/bin:\$PATH\"
             export NVM_DIR=\"\$HOME/.nvm\"
             [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
             $cmd
         "
     else
-        # Interactive shell (login shell to source bashrc)
+        # Interactive shell (login shell to source profile)
         log_info "Entering sandbox '$name' (/workspace)"
         echo ""
-        limactl shell --workdir /workspace "$vm_name" -- bash -l
+        limactl shell "$vm_name" -- bash -lc "cd /workspace && exec bash -l"
     fi
 }
 
