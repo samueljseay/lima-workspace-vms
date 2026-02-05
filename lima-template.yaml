@@ -104,9 +104,9 @@ rosetta:
   enabled: true
   binfmt: true
 
-# Network configuration
-networks:
-  - vzNAT: true
+# Network configuration - use shared network for better reliability
+vmType: "vz"
+networks: []
 
 # Message shown on start
 message: |
