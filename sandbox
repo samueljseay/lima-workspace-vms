@@ -63,6 +63,21 @@ vm_status() {
     limactl list --json 2>/dev/null | jq -rs ".[] | select(.name == \"$vm_name\") | .status"
 }
 
+# Sync Claude auth from macOS Keychain to file for Linux VM
+sync_claude_auth() {
+    local creds_file="$HOME/.claude/.credentials.json"
+
+    # Try to extract credentials from macOS Keychain
+    local creds
+    creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null) || return 0
+
+    if [[ -n "$creds" ]]; then
+        echo "$creds" > "$creds_file"
+        chmod 600 "$creds_file"
+        log_success "Synced Claude auth from Keychain"
+    fi
+}
+
 # Create a new sandbox
 create_sandbox() {
     local name="$1"
@@ -75,6 +90,9 @@ create_sandbox() {
         log_info "Creating ~/.claude directory for auth sharing..."
         mkdir -p "$HOME/.claude"
     fi
+
+    # Sync auth from Keychain
+    sync_claude_auth
 
     log_info "Creating sandbox '$name' with $code_path mounted..."
 
@@ -128,6 +146,9 @@ attach_sandbox() {
     local cmd="${2:-}"
     local vm_name
     vm_name="$(get_vm_name "$name")"
+
+    # Sync auth from Keychain before attaching
+    sync_claude_auth
 
     # Check status and start if needed
     local status
