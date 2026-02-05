@@ -72,6 +72,10 @@ provision:
       # Claude Sandbox environment
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+      # Load Claude OAuth token from shared credentials
+      if [ -f "$HOME/.claude/.credentials.json" ]; then
+        export CLAUDE_CODE_OAUTH_TOKEN=$(grep -o '"accessToken":"[^"]*"' "$HOME/.claude/.credentials.json" | cut -d'"' -f4)
+      fi
       # Nice prompt showing we're in a sandbox
       PS1='\[\033[0;35m\][sandbox]\[\033[0m\] \[\033[0;34m\]\w\[\033[0m\] \$ '
       # Aliases
