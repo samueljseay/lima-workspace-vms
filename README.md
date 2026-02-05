@@ -19,14 +19,11 @@ ln -s "$PWD/sandbox" /usr/local/bin/sandbox
 ## Usage
 
 ```bash
-# Create a new sandbox with your codebase
-sandbox new myproject ~/Code/myproject
+# Run a sandbox (creates on first run, then attaches)
+sandbox ~/Code/myproject
 
-# Attach to it (starts if stopped)
-sandbox attach myproject
-
-# Inside the sandbox, run Claude in YOLO mode
-claude  # aliased to --dangerously-skip-permissions
+# Same, but with a custom name
+sandbox ~/Code/myproject --name foo
 
 # List all sandboxes
 sandbox list
@@ -35,7 +32,7 @@ sandbox list
 sandbox stop myproject
 
 # Delete a sandbox
-sandbox delete myproject
+sandbox rm myproject
 ```
 
 ## What's Included
@@ -61,6 +58,7 @@ Each sandbox VM comes with:
 - The `claude` alias automatically enables YOLO mode
 - Sandboxes persist across restarts - use `sandbox stop` to free resources
 - Multiple sandboxes can run simultaneously
+- Your IDE on the host can edit files directly (they're the same files)
 
 ## Customization
 

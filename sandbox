@@ -21,22 +21,18 @@ usage() {
     cat <<EOF
 Claude Sandbox - Isolated development environments
 
-Usage: sandbox <command> [options]
-
-Commands:
-    new <name> <path>     Create a new sandbox with codebase mounted
-    attach <name>         Attach to an existing sandbox (starts if stopped)
-    list                  List all sandboxes
-    stop <name>           Stop a running sandbox
-    delete <name>         Delete a sandbox
-    status <name>         Show sandbox status
+Usage:
+    sandbox <path> [--name <name>]    Run a sandbox (creates if needed)
+    sandbox list                      List all sandboxes
+    sandbox stop <name>               Stop a running sandbox
+    sandbox rm <name>                 Delete a sandbox
 
 Examples:
-    sandbox new myproject ~/Code/myproject
-    sandbox attach woo
+    sandbox ~/Code/myproject              # Creates and enters sandbox "myproject"
+    sandbox ~/Code/myproject --name foo   # Creates and enters sandbox "foo"
     sandbox list
-    sandbox stop woo
-    sandbox delete woo
+    sandbox stop myproject
+    sandbox rm myproject
 
 The VM comes with Claude Code pre-installed and your codebase mounted at /workspace.
 EOF
@@ -65,29 +61,12 @@ vm_status() {
     limactl list --json 2>/dev/null | jq -rs ".[] | select(.name == \"$vm_name\") | .status"
 }
 
-cmd_new() {
-    local name="${1:-}"
-    local code_path="${2:-}"
-
-    if [[ -z "$name" || -z "$code_path" ]]; then
-        log_error "Usage: sandbox new <name> <path>"
-        exit 1
-    fi
-
-    # Resolve to absolute path
-    code_path="$(cd "$code_path" 2>/dev/null && pwd)" || {
-        log_error "Path does not exist: $code_path"
-        exit 1
-    }
-
+# Create a new sandbox
+create_sandbox() {
+    local name="$1"
+    local code_path="$2"
     local vm_name
     vm_name="$(get_vm_name "$name")"
-
-    # Check if already exists
-    if vm_exists "$vm_name"; then
-        log_error "Sandbox '$name' already exists. Use 'sandbox attach $name' or delete it first."
-        exit 1
-    fi
 
     log_info "Creating sandbox '$name' with $code_path mounted..."
 
@@ -132,25 +111,14 @@ cmd_new() {
         fi
     '
 
-    log_success "Setup complete! Run 'sandbox attach $name' to enter."
+    log_success "Setup complete!"
 }
 
-cmd_attach() {
-    local name="${1:-}"
-
-    if [[ -z "$name" ]]; then
-        log_error "Usage: sandbox attach <name>"
-        exit 1
-    fi
-
+# Attach to an existing sandbox
+attach_sandbox() {
+    local name="$1"
     local vm_name
     vm_name="$(get_vm_name "$name")"
-
-    # Check if exists
-    if ! vm_exists "$vm_name"; then
-        log_error "Sandbox '$name' does not exist. Create it with 'sandbox new $name <path>'"
-        exit 1
-    fi
 
     # Check status and start if needed
     local status
@@ -161,12 +129,59 @@ cmd_attach() {
         limactl start "$vm_name"
     fi
 
-    log_info "Attaching to sandbox '$name'..."
-    log_info "Workspace mounted at /workspace"
+    log_info "Entering sandbox '$name' (/workspace)"
     echo ""
 
-    # Shell in with nvm loaded, starting in /workspace
+    # Shell in, starting in /workspace
     limactl shell --workdir /workspace "$vm_name"
+}
+
+# Main command: run a sandbox (create if needed, then attach)
+cmd_run() {
+    local code_path="${1:-}"
+    local name=""
+
+    # Parse --name flag
+    shift || true
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --name|-n)
+                name="${2:-}"
+                shift 2
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ -z "$code_path" ]]; then
+        usage
+        exit 1
+    fi
+
+    # Resolve to absolute path
+    code_path="$(cd "$code_path" 2>/dev/null && pwd)" || {
+        log_error "Path does not exist: $code_path"
+        exit 1
+    }
+
+    # Derive name from directory if not specified
+    if [[ -z "$name" ]]; then
+        name="$(basename "$code_path")"
+    fi
+
+    local vm_name
+    vm_name="$(get_vm_name "$name")"
+
+    # Create if doesn't exist
+    if ! vm_exists "$vm_name"; then
+        create_sandbox "$name" "$code_path"
+    fi
+
+    # Attach
+    attach_sandbox "$name"
 }
 
 cmd_list() {
@@ -198,7 +213,7 @@ cmd_list() {
     done < <(limactl list --json 2>/dev/null | jq -sc '.[]')
 
     if [[ "$found" == false ]]; then
-        echo "  No sandboxes found. Create one with 'sandbox new <name> <path>'"
+        echo "  No sandboxes found. Create one with: sandbox ~/path/to/code"
     fi
     echo ""
 }
@@ -223,7 +238,7 @@ cmd_delete() {
     local name="${1:-}"
 
     if [[ -z "$name" ]]; then
-        log_error "Usage: sandbox delete <name>"
+        log_error "Usage: sandbox rm <name>"
         exit 1
     fi
 
@@ -242,48 +257,27 @@ cmd_delete() {
     fi
 }
 
-cmd_status() {
-    local name="${1:-}"
-
-    if [[ -z "$name" ]]; then
-        log_error "Usage: sandbox status <name>"
-        exit 1
-    fi
-
-    local vm_name
-    vm_name="$(get_vm_name "$name")"
-
-    limactl list --json 2>/dev/null | jq -s ".[] | select(.name == \"$vm_name\")"
-}
-
 # Main
 check_lima
 
 case "${1:-}" in
-    new)
-        cmd_new "${2:-}" "${3:-}"
-        ;;
-    attach|a)
-        cmd_attach "${2:-}"
-        ;;
     list|ls)
         cmd_list
         ;;
     stop)
         cmd_stop "${2:-}"
         ;;
-    delete|rm)
+    rm|delete)
         cmd_delete "${2:-}"
         ;;
-    status)
-        cmd_status "${2:-}"
+    -h|--help|help)
+        usage
         ;;
-    -h|--help|help|"")
+    "")
         usage
         ;;
     *)
-        log_error "Unknown command: $1"
-        usage
-        exit 1
+        # Default: treat as path and run
+        cmd_run "$@"
         ;;
 esac
