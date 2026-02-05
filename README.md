@@ -41,9 +41,8 @@ sandbox rm myproject      # Delete
 Each sandbox VM comes with:
 
 - Ubuntu 24.04
+- Claude Code (native installer)
 - Node.js (via nvm)
-- Claude Code (pre-installed)
-- Claude Code Safety Net (pre-installed)
 - PHP + Composer
 - Git, ripgrep, fd, tmux, vim
 - Your codebase mounted at `/workspace`
