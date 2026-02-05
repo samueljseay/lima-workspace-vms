@@ -124,7 +124,8 @@ create_sandbox() {
     log_success "Sandbox '$name' created and started!"
     log_info "Installing Claude Code (this may take a moment)..."
 
-    # Install Claude Code (native)
+    # Install Claude Code (native) - filter Lima's cd errors
+    exec 3>&2 2> >(grep -v "^bash: line 1: cd:" >&3)
     limactl shell "$vm_name" -- bash -c '
         # Install Claude Code via native installer
         if [ ! -f "$HOME/.local/bin/claude" ]; then
@@ -141,6 +142,7 @@ create_sandbox() {
             echo "✓ Node.js installed"
         fi
     '
+    exec 2>&3 3>&-
 
     log_success "Setup complete!"
 }
